@@ -43,10 +43,32 @@
         .dot.online { background: #04d361; box-shadow: 0 0 8px #04d361; }
         .dot.offline { background: #f74040; box-shadow: 0 0 8px #f74040; }
 
-        .editor-wrapper { position: relative; }
+        .target-box {
+            margin-bottom: 15px;
+        }
+        .target-box label {
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #a8a8b3;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+        .target-box input {
+            width: 100%;
+            padding: 10px;
+            background: #202024;
+            border: 1px solid #29292e;
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+        }
+        .target-box input:focus { border-color: #8257e5; }
+
         textarea {
             width: 100%;
-            height: 350px;
+            height: 300px;
             background: #202024;
             color: #00e676;
             border: 1px solid #29292e;
@@ -92,6 +114,11 @@
         <span id="statusText">Checking Render server status...</span>
     </div>
 
+    <div class="target-box">
+        <label for="playerTarget">Target Username</label>
+        <input type="text" id="playerTarget" placeholder="Leave blank to run on ALL active servers">
+    </div>
+
     <div class="editor-wrapper">
         <textarea id="scriptInput" placeholder="-- Paste your require() script here&#10;-- Example: require(12345678).load('username')"></textarea>
     </div>
@@ -103,17 +130,16 @@
 </div>
 
 <script>
-    // ⚙️ CONFIGURATION (Must match your Render app details exactly)
+    // ⚠️ CONFIGURATION (Must match your Render app details exactly)
     const RENDER_URL = "https://onrender.com"; // Your Render link (no trailing slash)
     const SECRET_TOKEN = "MySuperSecretToken123!";                  // Your exact password
 
-    // Automatically check if Render is awake when page loads
+    // Check if Render is awake when page loads
     async function checkServerStatus() {
         const dot = document.getElementById('statusDot');
         const text = document.getElementById('statusText');
         
         try {
-            // Ping the backend script endpoint
             const res = await fetch(`${RENDER_URL}/get-script`, {
                 headers: { "Authorization": SECRET_TOKEN }
             });
@@ -122,7 +148,7 @@
                 text.innerText = "Render Server: Connected & Awake";
             } else {
                 dot.className = "dot offline";
-                text.innerText = "Render Server: Wrong Token or Error";
+                text.innerText = "Render Server: Wrong Token or Connection Error";
             }
         } catch (err) {
             dot.className = "dot offline";
@@ -133,6 +159,8 @@
     // Execute button action
     async function executeScript() {
         const scriptCode = document.getElementById('scriptInput').value;
+        const targetPlayer = document.getElementById('playerTarget').value.trim();
+
         if (!scriptCode.trim()) {
             alert("Please enter a script before executing.");
             return;
@@ -145,14 +173,17 @@
                     "Content-Type": "application/json",
                     "Authorization": SECRET_TOKEN 
                 },
-                body: JSON.stringify({ code: scriptCode })
+                body: JSON.stringify({ 
+                    code: scriptCode,
+                    target: targetPlayer || "ALL" 
+                })
             });
 
             if (response.ok) {
-                alert("Success! Script loaded into Render queue. It will run in your Roblox game in a few seconds.");
+                alert(`Success! Script sent. Target: ${targetPlayer || "All Servers"}. It will run in Roblox within a few seconds.`);
             } else {
                 const data = await response.json();
-                alert("Execution error: " + (data.error || "Unknown server rejection."));
+                alert("Execution error: " + (data.error || "Unknown backend error."));
             }
         } catch (error) {
             alert("Could not reach Render backend. If your server was sleeping, it might take 30 seconds to wake up. Try again shortly!");
