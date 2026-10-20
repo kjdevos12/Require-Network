@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox Script Executor Panel</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #121214;
+            color: #e1e1e6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: #19191d;
+            border: 1px solid #29292e;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        h2 { font-weight: 600; margin-bottom: 5px; color: #fff; }
+        .subtitle { font-size: 14px; color: #7c7c8a; margin-bottom: 20px; }
+        
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #202024;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 15px;
+            border: 1px solid #29292e;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #7c7c8a; }
+        .dot.online { background: #04d361; box-shadow: 0 0 8px #04d361; }
+        .dot.offline { background: #f74040; box-shadow: 0 0 8px #f74040; }
+
+        .editor-wrapper { position: relative; }
+        textarea {
+            width: 100%;
+            height: 350px;
+            background: #202024;
+            color: #00e676;
+            border: 1px solid #29292e;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'Fira Code', 'Courier New', Courier, monospace;
+            font-size: 14px;
+            resize: vertical;
+            outline: none;
+            line-height: 1.5;
+        }
+        textarea:focus { border-color: #8257e5; }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        button:active { transform: scale(0.98); }
+        .btn-execute { background: #8257e5; color: white; flex: 2; }
+        .btn-execute:hover { background: #9466ff; }
+        .btn-clear { background: #29292e; color: #a8a8b3; flex: 1; }
+        .btn-clear:hover { background: #323238; color: #fff; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Game Script Panel</h2>
+    <p class="subtitle">Execute require() tools or raw code directly into your active Roblox live server.</p>
+    
+    <div class="status-bar">
+        <div id="statusDot" class="dot"></div>
+        <span id="statusText">Checking Render server status...</span>
+    </div>
+
+    <div class="editor-wrapper">
+        <textarea id="scriptInput" placeholder="-- Paste your require() script here&#10;-- Example: require(12345678).load('username')"></textarea>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn-clear" onclick="clearEditor()">Clear</button>
+        <button class="btn-execute" onclick="executeScript()">Execute Script</button>
+    </div>
+</div>
+
+<script>
+    // ⚙️ CONFIGURATION (Must match your Render app details exactly)
+    const RENDER_URL = "https://onrender.com"; // Your Render link (no trailing slash)
+    const SECRET_TOKEN = "MySuperSecretToken123!";                  // Your exact password
+
+    // Automatically check if Render is awake when page loads
+    async function checkServerStatus() {
+        const dot = document.getElementById('statusDot');
+        const text = document.getElementById('statusText');
+        
+        try {
+            // Ping the backend script endpoint
+            const res = await fetch(`${RENDER_URL}/get-script`, {
+                headers: { "Authorization": SECRET_TOKEN }
+            });
+            if (res.ok) {
+                dot.className = "dot online";
+                text.innerText = "Render Server: Connected & Awake";
+            } else {
+                dot.className = "dot offline";
+                text.innerText = "Render Server: Wrong Token or Error";
+            }
+        } catch (err) {
+            dot.className = "dot offline";
+            text.innerText = "Render Server: Offline (Spinning up or Sleeping)";
+        }
+    }
+
+    // Execute button action
+    async function executeScript() {
+        const scriptCode = document.getElementById('scriptInput').value;
+        if (!scriptCode.trim()) {
+            alert("Please enter a script before executing.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${RENDER_URL}/execute`, {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": SECRET_TOKEN 
+                },
+                body: JSON.stringify({ code: scriptCode })
+            });
+
+            if (response.ok) {
+                alert("Success! Script loaded into Render queue. It will run in your Roblox game in a few seconds.");
+            } else {
+                const data = await response.json();
+                alert("Execution error: " + (data.error || "Unknown server rejection."));
+            }
+        } catch (error) {
+            alert("Could not reach Render backend. If your server was sleeping, it might take 30 seconds to wake up. Try again shortly!");
+        }
+    }
+
+    function clearEditor() {
+        document.getElementById('scriptInput').value = "";
+    }
+
+    // Run status check instantly on page load
+    checkServerStatus();
+</script>
+
+</body>
+</html>
